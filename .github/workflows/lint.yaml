@@ -14,7 +14,7 @@ jobs:
 
       - name: Get go version from .tool-versions
         id: goversion
-        run: echo goversion=$(grep '^golang ' .tool-versions | awk '{print $2}') >> $GITHUB_OUTPUT
+        run: echo goversion=$(grep '^go ' .tool-versions | awk '{print $2}') >> $GITHUB_OUTPUT
 
       - name: golangci-lint
         uses: reviewdog/action-golangci-lint@v2
