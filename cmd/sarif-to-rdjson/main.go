@@ -4,24 +4,25 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"strings"
 
-	"github.com/yteraoka/sarif-to-rdjson/internal/pkg/sarif"
 	"github.com/yteraoka/sarif-to-rdjson/internal/pkg/rdjson"
+	"github.com/yteraoka/sarif-to-rdjson/internal/pkg/sarif"
 )
 
 var (
 	version = "unknown"
-	commit = "unknown"
-	date = "unknown"
+	commit  = "unknown"
+	date    = "unknown"
 )
 
-func convert(sarif_json_bytes []byte) (rdjson_bytes []byte, err error) {
+func convert(sarifJsonBytes []byte) (rdjsonBytes []byte, err error) {
 	var src sarif.Sarif
 
-	err = json.Unmarshal(sarif_json_bytes, &src)
+	err = json.Unmarshal(sarifJsonBytes, &src)
 	if err != nil {
 		return
 	}
@@ -30,28 +31,28 @@ func convert(sarif_json_bytes []byte) (rdjson_bytes []byte, err error) {
 
 	rd.Source = &rdjson.Source{
 		Name: src.Runs[0].Tool.Driver.Name,
-		Url: src.Runs[0].Tool.Driver.InformationUri,
+		Url:  src.Runs[0].Tool.Driver.InformationUri,
 	}
 
 	for _, res := range src.Runs[0].Results {
 		for _, loc := range res.Locations {
 			diag := &rdjson.Diagnostic{
-				Message: src.Runs[0].Tool.Driver.Rules[res.RuleIndex].Help.Text,
+				Message:  src.Runs[0].Tool.Driver.Rules[res.RuleIndex].Help.Text,
 				Severity: strings.ToUpper(res.Level),
 				Code: &rdjson.Code{
 					Value: res.RuleID,
-					Url: src.Runs[0].Tool.Driver.Rules[res.RuleIndex].HelpURI,
+					Url:   src.Runs[0].Tool.Driver.Rules[res.RuleIndex].HelpURI,
 				},
 			}
 			diag.Location = &rdjson.Location{
 				Path: loc.PhysicalLocation.ArtifactLocation.URI,
 				Range: &rdjson.Range{
 					Start: &rdjson.Position{
-						Line: loc.PhysicalLocation.Region.StartLine,
+						Line:   loc.PhysicalLocation.Region.StartLine,
 						Column: loc.PhysicalLocation.Region.StartColumn,
 					},
 					End: &rdjson.Position{
-						Line: loc.PhysicalLocation.Region.EndLine,
+						Line:   loc.PhysicalLocation.Region.EndLine,
 						Column: loc.PhysicalLocation.Region.EndColumn,
 					},
 				},
@@ -78,15 +79,25 @@ func main() {
 		os.Exit(1)
 	}
 
-	data, err := os.ReadFile(os.Args[1])
+	var sarifJsonBytes []byte
+	var err error
+
+	if flag.NArg() == 1 {
+		sarifJsonBytes, err = os.ReadFile(flag.Arg(0))
+		if err != nil {
+			log.Fatal(err)
+		}
+	} else if flag.NArg() == 0 {
+		sarifJsonBytes, err = io.ReadAll(os.Stdin)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	rdjsonBytes, err := convert(sarifJsonBytes)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	rdjson_bytes, err := convert(data)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	os.Stdout.Write(rdjson_bytes)
+	os.Stdout.Write(rdjsonBytes)
 }
