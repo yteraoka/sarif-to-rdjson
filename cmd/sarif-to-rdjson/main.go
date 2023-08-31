@@ -37,7 +37,7 @@ func convert(sarifJsonBytes []byte) (rdjsonBytes []byte, err error) {
 	for _, res := range src.Runs[0].Results {
 		for _, loc := range res.Locations {
 			diag := &rdjson.Diagnostic{
-				Message:  src.Runs[0].Tool.Driver.Rules[res.RuleIndex].Help.Text,
+				Message:  strings.TrimLeft(src.Runs[0].Tool.Driver.Rules[res.RuleIndex].FullDescription.Text, "\n"),
 				Severity: strings.ToUpper(res.Level),
 				Code: &rdjson.Code{
 					Value: res.RuleID,
@@ -57,9 +57,6 @@ func convert(sarifJsonBytes []byte) (rdjsonBytes []byte, err error) {
 					},
 				},
 			}
-			diag.Suggestions = append(diag.Suggestions, &rdjson.Suggestion{
-				Text: strings.TrimLeft(src.Runs[0].Tool.Driver.Rules[res.RuleIndex].FullDescription.Text, "\n"),
-			})
 			rd.Diagnostics = append(rd.Diagnostics, diag)
 		}
 	}
